@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Camera Detection Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .status.active {
+            background: rgba(52, 199, 89, 0.2);
+        }
+
+        .status.active::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #34c759;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .stat-card h3 {
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            color: #1e293b;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .detection-card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .detection-card h2 {
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .detection-list {
+            list-style: none;
+        }
+
+        .detection-item {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .detection-item:hover {
+            background-color: #f8fafc;
+        }
+
+        .detection-item:last-child {
+            border-bottom: none;
+        }
+
+        .detection-label {
+            font-weight: 500;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detection-label::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #1a73e8;
+            border-radius: 50%;
+        }
+
+        .detection-confidence {
+            background-color: #e8f0fe;
+            color: #1a73e8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .timestamp {
+            color: #64748b;
+            font-size: 14px;
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .timestamp::before {
+            content: '🕒';
+        }
+
+        .no-detections {
+            text-align: center;
+            color: #64748b;
+            padding: 32px;
+            background: #f8fafc;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            background-color: #fee2e2;
+            color: #dc2626;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            display: none;
+            font-size: 14px;
+            border-left: 4px solid #dc2626;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .confidence-bar {
+            width: 100px;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-left: 12px;
+        }
+
+        .confidence-bar-fill {
+            height: 100%;
+            background: #1a73e8;
+            border-radius: 3px;
+            transition: width 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>AI Camera Detection Dashboard</h1>
+                <p>Real-time object detection monitoring</p>
+            </div>
+            <div class="status active">Server Active</div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="stat-card">
+                <h3>Total Detections</h3>
+                <div class="value" id="totalDetections">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Active Objects</h3>
+                <div class="value" id="activeObjects">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Average Confidence</h3>
+                <div class="value" id="avgConfidence">0%</div>
+            </div>
+        </div>
+        
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="detection-card">
+            <h2>
+                Latest Detections
+                <span id="detectionCount" style="font-size: 14px; color: #64748b;">0 objects</span>
+            </h2>
+            <div id="detectionList">
+                <div class="no-detections">Waiting for detections...</div>
+            </div>
+            <div id="timestamp" class="timestamp"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.protocol + '//' + window.location.hostname + ':8000';
+        const detectionList = document.getElementById('detectionList');
+        const timestampElement = document.getElementById('timestamp');
+        const errorMessage = document.getElementById('errorMessage');
+        const totalDetections = document.getElementById('totalDetections');
+        const activeObjects = document.getElementById('activeObjects');
+        const avgConfidence = document.getElementById('avgConfidence');
+        const detectionCount = document.getElementById('detectionCount');
+
+        let detectionHistory = [];
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function updateStats(detections) {
+            // Update total detections
+            detectionHistory.push(...detections);
+            totalDetections.textContent = detectionHistory.length;
+
+            // Update active objects
+            const uniqueObjects = new Set(detections.map(d => d.label));
+            activeObjects.textContent = uniqueObjects.size;
+
+            // Update average confidence
+            if (detections.length > 0) {
+                const avg = detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length;
+                avgConfidence.textContent = `${(avg * 100).toFixed(1)}%`;
+            }
+
+            // Update detection count
+            detectionCount.textContent = `${detections.length} object${detections.length !== 1 ? 's' : ''}`;
+        }
+
+        function updateDetections() {
+            fetch(`${API_URL}/detections`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    hideError();
+                    if (data.detections && data.detections.length > 0) {
+                        let html = '<ul class="detection-list">';
+                        data.detections.forEach(detection => {
+                            const confidencePercent = (detection.confidence * 100).toFixed(1);
+                            html += `
+                                <li class="detection-item fade-in">
+                                    <span class="detection-label">
+                                        ${detection.label}
+                                        <div class="confidence-bar">
+                                            <div class="confidence-bar-fill" style="width: ${confidencePercent}%"></div>
+                                        </div>
+                                    </span>
+                                    <span class="detection-confidence">${confidencePercent}%</span>
+                                </li>
+                            `;
+                        });
+                        html += '</ul>';
+                        detectionList.innerHTML = html;
+                        timestampElement.textContent = `Last updated: ${formatTimestamp(data.timestamp)}`;
+                        updateStats(data.detections);
+                    } else {
+                        detectionList.innerHTML = '<div class="no-detections">No detections at the moment</div>';
+                        timestampElement.textContent = '';
+                        updateStats([]);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching detections:', error);
+                    showError(`Error connecting to server: ${error.message}. Please make sure the server is running at ${API_URL}`);
+                    detectionList.innerHTML = '<div class="no-detections">Error fetching detections</div>';
+                });
+        }
+
+        // Update immediately and then every 4 seconds
+        updateDetections();
+        setInterval(updateDetections, 4000);
+    </script>
+</body>
+</html> 
